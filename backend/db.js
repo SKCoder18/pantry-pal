@@ -1,50 +1,61 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 
-const dbPath = path.resolve(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    
-    db.serialize(() => {
-      // Users table
-      db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+// Use Render's DATABASE_URL or fallback for local
+const connectionString = process.env.DATABASE_URL || 'postgres://user:pass@localhost:5432/pantrypal';
+
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+const initDb = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
         name TEXT,
         email TEXT UNIQUE,
         password TEXT,
         google_id TEXT,
         picture TEXT
-      )`);
+      );
+    `);
 
-      // Inventory table
-      db.run(`CREATE TABLE IF NOT EXISTS inventory (
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
-        user_id INTEGER,
+        user_id INTEGER REFERENCES users(id),
         name TEXT,
         quantity TEXT,
         category TEXT,
         expiry TEXT,
         image TEXT,
-        addedAt TEXT,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )`);
+        "addedAt" TEXT
+      );
+    `);
 
-      // Custom recipes table
-      db.run(`CREATE TABLE IF NOT EXISTS custom_recipes (
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS custom_recipes (
         id TEXT PRIMARY KEY,
-        user_id INTEGER,
+        user_id INTEGER REFERENCES users(id),
         title TEXT,
-        prepTime TEXT,
+        "prepTime" TEXT,
         ingredients TEXT,
         instructions TEXT,
-        createdAt TEXT,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )`);
-    });
+        "createdAt" TEXT
+      );
+    `);
+    
+    console.log('Connected to PostgreSQL and verified tables.');
+  } catch (err) {
+    console.error('Error initializing PostgreSQL tables:', err);
   }
-});
+};
 
-module.exports = db;
+initDb();
+
+module.exports = pool;
