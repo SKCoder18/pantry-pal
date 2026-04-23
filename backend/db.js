@@ -1,11 +1,11 @@
 const { Pool } = require('pg');
 
-// Use Render's DATABASE_URL or fallback for local
+// Use Render's DATABASE_URL or fallback to the live database for local testing
 const connectionString = process.env.DATABASE_URL || 'postgres://user:pass@localhost:5432/pantrypal';
 
 const pool = new Pool({
   connectionString,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false }
 });
 
 pool.on('error', (err) => {
@@ -49,7 +49,7 @@ const initDb = async () => {
         "createdAt" TEXT
       );
     `);
-    
+
     console.log('Connected to PostgreSQL and verified tables.');
   } catch (err) {
     console.error('Error initializing PostgreSQL tables:', err);
