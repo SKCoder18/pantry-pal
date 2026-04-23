@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
-// Use Render's DATABASE_URL or fallback to the live database
-const connectionString = process.env.DATABASE_URL || 'postgresql://pantrypal_db_ppgs_user:W1zvIQiM2vGxgg2DTFasYmBRc5ws1kSb@dpg-d7l76blckfvc73a2v1qg-a/pantrypal_db_ppgs';
+// Forcing the Render Internal URL because the Render dashboard has a bad URL saved in it.
+const connectionString = 'postgresql://pantrypal_db_ppgs_user:W1zvIQiM2vGxgg2DTFasYmBRc5ws1kSb@dpg-d7l76blckfvc73a2v1qg-a/pantrypal_db_ppgs';
 
 const pool = new Pool({
   connectionString,
