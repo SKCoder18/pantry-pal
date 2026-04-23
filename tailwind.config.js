@@ -1,0 +1,73 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      "colors": {
+        "inverse-primary": "#6ddd81",
+        "surface": "#fafaf5",
+        "on-secondary-container": "#672c00",
+        "outline": "#707973",
+        "surface-bright": "#fafaf5",
+        "on-primary-container": "#80f193",
+        "error-container": "#ffdad6",
+        "on-secondary": "#ffffff",
+        "on-secondary-fixed": "#331200",
+        "surface-tint": "#006e2c",
+        "surface-container": "#eeeee9",
+        "on-primary": "#ffffff",
+        "surface-dim": "#dadad5",
+        "secondary-fixed-dim": "#ffb68d",
+        "inverse-surface": "#2f312e",
+        "on-tertiary-fixed-variant": "#703800",
+        "on-primary-fixed-variant": "#005320",
+        "secondary": "#9b4500",
+        "primary-fixed-dim": "#6ddd81",
+        "on-background": "#1a1c19",
+        "error": "#ba1a1a",
+        "on-tertiary": "#ffffff",
+        "tertiary": "#713900",
+        "inverse-on-surface": "#f1f1ec",
+        "outline-variant": "#bfc9c1",
+        "secondary-fixed": "#ffdbc9",
+        "tertiary-fixed": "#ffdcc4",
+        "on-surface-variant": "#404943",
+        "on-error": "#ffffff",
+        "on-surface": "#1a1c19",
+        "tertiary-container": "#944c00",
+        "primary-fixed": "#89fa9b",
+        "primary-container": "#006e2d",
+        "secondary-container": "#fc8a40",
+        "background": "#fafaf5",
+        "primary": "#005320",
+        "tertiary-fixed-dim": "#ffb781",
+        "on-tertiary-fixed": "#301400",
+        "on-secondary-fixed-variant": "#763300",
+        "surface-container-highest": "#e3e3de",
+        "on-primary-fixed": "#002108",
+        "on-error-container": "#93000a",
+        "surface-container-high": "#e8e8e3",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-low": "#f4f4ef",
+        "on-tertiary-container": "#ffd1b1",
+        "surface-variant": "#e3e3de"
+      },
+      "borderRadius": {
+        "DEFAULT": "0.25rem",
+        "lg": "0.5rem",
+        "xl": "0.75rem",
+        "full": "9999px"
+      },
+      "fontFamily": {
+        "headline": ["Plus Jakarta Sans", "sans-serif"],
+        "body": ["Be Vietnam Pro", "sans-serif"],
+        "label": ["Be Vietnam Pro", "sans-serif"]
+      }
+    },
+  },
+  plugins: [],
+}
