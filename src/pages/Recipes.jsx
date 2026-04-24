@@ -7,6 +7,7 @@ import { RECIPE_DB } from '../utils/recipeDB';
 export default function Recipes() {
   const [recipes, setRecipes] = useState(RECIPE_DB);
   const [customRecipes, setCustomRecipes] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -31,6 +32,16 @@ export default function Recipes() {
     setLoading(false);
   };
 
+  const filteredRecipes = recipes.filter(r => 
+    r.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    r.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  
+  const filteredCustomRecipes = customRecipes.filter(cr => 
+    cr.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    cr.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
       <header className="fixed top-0 left-0 w-full z-50 bg-[#fafaf5] dark:bg-stone-950 flex items-center justify-between px-6 py-4">
@@ -43,7 +54,7 @@ export default function Recipes() {
       </header>
 
       <section className="mb-10 mt-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6">
           <div className="space-y-2">
             <span className="text-xs font-bold tracking-[0.1em] text-on-surface-variant uppercase font-label">Curated For You</span>
             <h2 className="text-4xl md:text-5xl font-extrabold text-on-surface font-headline leading-tight tracking-tighter">Kitchen Inspiration</h2>
@@ -53,18 +64,30 @@ export default function Recipes() {
             {loading ? "Scanning Pantry..." : "AI Suggest Recipes"}
           </button>
         </div>
+        
+        {/* Search Bar */}
+        <div className="relative max-w-2xl">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+          <input 
+            type="text" 
+            placeholder="Search recipes by name or description..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-full py-4 pl-12 pr-6 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-sm"
+          />
+        </div>
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {recipes.length === 0 && !loading && (
+        {filteredRecipes.length === 0 && !loading && (
             <div className="col-span-full p-12 text-center border-2 border-dashed border-outline-variant rounded-3xl">
                 <span className="material-symbols-outlined text-6xl text-outline mb-4 opacity-50">restaurant_menu</span>
-                <p className="text-xl font-bold text-on-surface mb-2">No Recipes Yet</p>
-                <p className="text-on-surface-variant">Tap the AI Suggest button to magically create recipes mapped to your current ingredients!</p>
+                <p className="text-xl font-bold text-on-surface mb-2">{searchQuery ? "No matching recipes found" : "No Recipes Yet"}</p>
+                <p className="text-on-surface-variant">{searchQuery ? "Try searching for something else." : "Tap the AI Suggest button to magically create recipes mapped to your current ingredients!"}</p>
             </div>
         )}
         
-        {recipes.map((recipe, index) => (
+        {filteredRecipes.map((recipe, index) => (
           <div key={index} className="md:col-span-6 bg-surface-container-lowest rounded-[2rem] overflow-hidden group border border-outline-variant/10 shadow-sm hover:shadow-md transition-all">
             <div className="p-8 flex flex-col justify-between h-full">
               <div>
@@ -95,14 +118,14 @@ export default function Recipes() {
         <p className="text-on-surface-variant mb-6">Custom recipes you've created and saved.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-           {customRecipes.length === 0 ? (
+           {filteredCustomRecipes.length === 0 ? (
                <div className="col-span-full p-8 text-center border border-dashed border-outline-variant/60 rounded-[2rem] bg-surface-container-lowest">
                    <span className="material-symbols-outlined text-4xl text-outline mb-2 opacity-50">menu_book</span>
-                   <p className="font-bold text-on-surface">No Custom Recipes</p>
-                   <p className="text-sm text-on-surface-variant">Tap the + button to create your first personal recipe!</p>
+                   <p className="font-bold text-on-surface">{searchQuery ? "No matching custom recipes found" : "No Custom Recipes"}</p>
+                   <p className="text-sm text-on-surface-variant">{searchQuery ? "Try a different search." : "Tap the + button to create your first personal recipe!"}</p>
                </div>
            ) : (
-               customRecipes.map((cr, idx) => (
+               filteredCustomRecipes.map((cr, idx) => (
                   <div key={idx} className="md:col-span-6 bg-secondary-container text-on-secondary-container rounded-[2rem] overflow-hidden shadow-sm hover:shadow-md transition-all">
                     <div className="p-8 flex flex-col justify-between h-full">
                       <div>
