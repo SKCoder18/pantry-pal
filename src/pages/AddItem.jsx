@@ -84,11 +84,16 @@ export default function AddItem() {
     
     setIsSaving(true);
     try {
-      await addItem(formData);
-      
+      let event_id = null;
       if (formData.expiry && accessToken) {
-        await addEventToGoogleCalendar(formData.name, formData.expiry, accessToken);
+        event_id = await addEventToGoogleCalendar(formData.name, formData.expiry, accessToken);
       }
+      
+      // If event creation failed, it returns false. Don't save "false" as a string in DB.
+      const finalEventId = event_id === false ? null : event_id;
+      
+      await addItem({ ...formData, event_id: finalEventId });
+      
     } catch (e) {
       console.error(e);
       alert('Failed to save item');

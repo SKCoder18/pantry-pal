@@ -30,14 +30,15 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { id, name, quantity, category, expiry, image, addedAt } = req.body;
+  const { id, name, quantity, category, expiry, image, addedAt, event_id } = req.body;
   try {
     await pool.query(
-      'INSERT INTO inventory (id, user_id, name, quantity, category, expiry, image, "addedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      [id, req.user.id, name, quantity, category, expiry, image, addedAt]
+      'INSERT INTO inventory (id, user_id, name, quantity, category, expiry, image, "addedAt", event_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+      [id, req.user.id, name, quantity, category, expiry, image, addedAt, event_id]
     );
     res.json({ success: true });
   } catch (err) {
+    console.error("Error inserting inventory", err);
     res.status(500).json({ error: 'Database error' });
   }
 });

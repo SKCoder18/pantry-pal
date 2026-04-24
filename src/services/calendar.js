@@ -45,9 +45,40 @@ export const addEventToGoogleCalendar = async (itemName, expiryDate, accessToken
       return false;
     }
 
-    return true;
+    const data = await response.json();
+    return data.id; // Return the generated eventId
   } catch (error) {
     console.error('Network Error calling Google Calendar API:', error);
+    return false;
+  }
+};
+
+export const deleteEventFromGoogleCalendar = async (eventId, accessToken) => {
+  if (!accessToken || !eventId) {
+    console.error('Missing access token or eventId for Calendar API');
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Google Calendar API Error (Delete):', errorData);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Network Error deleting from Google Calendar API:', error);
     return false;
   }
 };

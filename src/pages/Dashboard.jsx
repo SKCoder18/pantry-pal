@@ -1,20 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { getInventory } from '../services/api';
+import { getInventory, deleteItem } from '../services/api';
+import { deleteEventFromGoogleCalendar } from '../services/calendar';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const [items, setItems] = useState([]);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, accessToken } = useAuth();
 
   useEffect(() => {
     const fetchInventory = async () => {
-      const data = await getInventory();
-      setItems(data);
+      let data = await getInventory();
+      
+      // Auto-deletion logic (Run background deletions so Dashboard loads instantly)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // start of today
+      
+      const validItems = data.filter(item => {
+        if (item.expiry) {
+          const expiryDate = new Date(item.expiry);
+          if (expiryDate < today) {
+            // Background deletion
+            (async () => {
+              if (item.event_id && item.event_id !== "false" && accessToken) {
+                await deleteEventFromGoogleCalendar(item.event_id, accessToken);
+              }
+              await deleteItem(item.id);
+            })().catch(e => console.error("Auto-delete failed for", item.name, e));
+            
+            return false; // Filter out from UI immediately
+          }
+        }
+        return true;
+      });
+      
+      setItems(validItems);
     };
     fetchInventory();
-  }, []);
+  }, [accessToken]);
+
+  const handleDelete = async (item) => {
+    if (!window.confirm(`Are you sure you want to delete ${item.name}?`)) return;
+    
+    try {
+      if (item.event_id && item.event_id !== "false" && accessToken) {
+         await deleteEventFromGoogleCalendar(item.event_id, accessToken);
+      }
+      await deleteItem(item.id);
+      setItems(prev => prev.filter(i => i.id !== item.id));
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete item');
+    }
+  };
 
   return (
     <div className="pt-24 pb-32 px-6 max-w-7xl mx-auto">
@@ -83,7 +122,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-headline font-bold text-lg">{item.name}</h4>
-                    <span className="material-symbols-outlined text-outline-variant text-sm">more_horiz</span>
+                    <button onClick={() => handleDelete(item)} className="material-symbols-outlined text-error hover:bg-error-container/50 p-1 rounded-full transition-colors" title="Delete Item">delete</button>
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant">

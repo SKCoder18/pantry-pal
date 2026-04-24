@@ -38,6 +38,11 @@ const initDb = async () => {
       );
     `);
 
+    // Safely add event_id if it doesn't exist
+    await pool.query(`
+      ALTER TABLE inventory ADD COLUMN IF NOT EXISTS event_id TEXT;
+    `);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS custom_recipes (
         id TEXT PRIMARY KEY,

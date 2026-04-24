@@ -84,6 +84,15 @@ export const addItem = async (item) => {
   return newItem;
 };
 
+export const deleteItem = async (id) => {
+  const res = await fetch(`${API_URL}/inventory/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders()
+  });
+  if (!res.ok) throw new Error('Failed to delete item');
+  return res.json();
+};
+
 // --- RECIPES ---
 export const getCustomRecipes = async () => {
   try {
