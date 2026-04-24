@@ -279,7 +279,7 @@ export const RECIPE_DB = [
     ingredients: ["Coconut - 1 cup", "Green chili - 2", "Water - as needed"],
     steps: ["Grind all ingredients.", "Add tempering (mustard + curry leaves)."]
   },
-\n  {
+  {
     title: "Jeera Rice",
     description: "A delicious Indian recipe.",
     time: "5 MINS",
