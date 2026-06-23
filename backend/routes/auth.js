@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
     if (error.code === '23505') { // Postgres unique violation code
       return res.status(400).json({ error: 'Email already exists' });
     }
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', message: error.message, stack: error.stack });
   }
 });
 
