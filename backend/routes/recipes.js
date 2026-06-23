@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const pool = require('../db');
+const db = require('../db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-pantrypal';
 
@@ -20,31 +20,30 @@ const authMiddleware = (req, res, next) => {
 
 router.use(authMiddleware);
 
-router.get('/', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM custom_recipes WHERE user_id = $1 ORDER BY "createdAt" DESC', [req.user.id]);
-    const recipes = result.rows.map(r => ({
+router.get('/', (req, res) => {
+  db.all('SELECT * FROM custom_recipes WHERE user_id = ? ORDER BY createdAt DESC', [req.user.id], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    // Parse JSON strings back to arrays
+    const recipes = rows.map(r => ({
       ...r,
       ingredients: JSON.parse(r.ingredients || '[]'),
       instructions: JSON.parse(r.instructions || '[]')
     }));
     res.json(recipes);
-  } catch (err) {
-    res.status(500).json({ error: 'Database error' });
-  }
+  });
 });
 
-router.post('/', async (req, res) => {
+router.post('/', (req, res) => {
   const { id, title, prepTime, ingredients, instructions, createdAt } = req.body;
-  try {
-    await pool.query(
-      'INSERT INTO custom_recipes (id, user_id, title, "prepTime", ingredients, instructions, "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [id, req.user.id, title, prepTime, JSON.stringify(ingredients), JSON.stringify(instructions), createdAt]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Database error' });
-  }
+  
+  db.run(
+    'INSERT INTO custom_recipes (id, user_id, title, prepTime, ingredients, instructions, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, req.user.id, title, prepTime, JSON.stringify(ingredients), JSON.stringify(instructions), createdAt],
+    (err) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      res.json({ success: true });
+    }
+  );
 });
 
 module.exports = router;

@@ -1,74 +1,63 @@
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 
-// Forcing the Render Internal URL because the Render dashboard has a bad URL saved in it.
-const connectionString = 'postgresql://pantrypal_db_ppgs_user:W1zvIQiM2vGxgg2DTFasYmBRc5ws1kSb@dpg-d7l76blckfvc73a2v1qg-a/pantrypal_db_ppgs';
-
-const pool = new Pool({
-  connectionString,
-  ssl: false
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-});
-
-const initDb = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+const dbPath = path.resolve(__dirname, 'database.sqlite');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database', err.message);
+  } else {
+    console.log('Connected to the SQLite database.');
+    
+    db.serialize(() => {
+      // Users table
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         email TEXT UNIQUE,
         password TEXT,
         google_id TEXT,
         picture TEXT
-      );
-    `);
+      )`);
 
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;
-    `);
+      // Migrations to add missing columns to users if they don't exist
+      db.run(`ALTER TABLE users ADD COLUMN google_id TEXT`, (err) => {
+        // Column might already exist, ignore error
+      });
+      db.run(`ALTER TABLE users ADD COLUMN picture TEXT`, (err) => {
+        // Column might already exist, ignore error
+      });
 
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT;
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS inventory (
+      // Inventory table
+      db.run(`CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER,
         name TEXT,
         quantity TEXT,
         category TEXT,
         expiry TEXT,
         image TEXT,
-        "addedAt" TEXT
-      );
-    `);
+        addedAt TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`);
 
-    // Safely add event_id if it doesn't exist
-    await pool.query(`
-      ALTER TABLE inventory ADD COLUMN IF NOT EXISTS event_id TEXT;
-    `);
+      // Migration to add event_id column to inventory if it doesn't exist
+      db.run(`ALTER TABLE inventory ADD COLUMN event_id TEXT`, (err) => {
+        // Column might already exist, ignore error
+      });
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS custom_recipes (
+      // Custom recipes table
+      db.run(`CREATE TABLE IF NOT EXISTS custom_recipes (
         id TEXT PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
+        user_id INTEGER,
         title TEXT,
-        "prepTime" TEXT,
+        prepTime TEXT,
         ingredients TEXT,
         instructions TEXT,
-        "createdAt" TEXT
-      );
-    `);
-
-    console.log('Connected to PostgreSQL and verified tables.');
-  } catch (err) {
-    console.error('Error initializing PostgreSQL tables:', err);
+        createdAt TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`);
+    });
   }
-};
+});
 
-initDb();
-
-module.exports = pool;
+module.exports = db;
