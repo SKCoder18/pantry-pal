@@ -77,7 +77,7 @@ router.post('/google', async (req, res) => {
       res.json({ token, user });
     }
   } catch (err) {
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Database error', message: err.message, stack: err.stack });
   }
 });
 
