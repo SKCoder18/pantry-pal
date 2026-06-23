@@ -26,6 +26,14 @@ const initDb = async () => {
     `);
 
     await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id TEXT;
+    `);
+
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS picture TEXT;
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS inventory (
         id TEXT PRIMARY KEY,
         user_id INTEGER REFERENCES users(id),
