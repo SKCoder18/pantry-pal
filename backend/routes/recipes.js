@@ -20,30 +20,35 @@ const authMiddleware = (req, res, next) => {
 
 router.use(authMiddleware);
 
+// Get user's custom recipes
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM custom_recipes WHERE user_id = ? ORDER BY createdAt DESC', [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    // Parse JSON strings back to arrays
-    const recipes = rows.map(r => ({
-      ...r,
-      ingredients: JSON.parse(r.ingredients || '[]'),
-      instructions: JSON.parse(r.instructions || '[]')
-    }));
+  try {
+    const recipes = db.recipes.findByUserId(req.user.id);
     res.json(recipes);
-  });
+  } catch (err) {
+    console.error('Fetch custom recipes error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
+// Save custom recipe
 router.post('/', (req, res) => {
   const { id, title, prepTime, ingredients, instructions, createdAt } = req.body;
   
-  db.run(
-    'INSERT INTO custom_recipes (id, user_id, title, prepTime, ingredients, instructions, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [id, req.user.id, title, prepTime, JSON.stringify(ingredients), JSON.stringify(instructions), createdAt],
-    (err) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
-      res.json({ success: true });
-    }
-  );
+  try {
+    db.recipes.insert(req.user.id, {
+      id,
+      title,
+      prepTime,
+      ingredients,
+      instructions,
+      createdAt
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Save custom recipe error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 module.exports = router;

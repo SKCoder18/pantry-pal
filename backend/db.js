@@ -1,79 +1,130 @@
-const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.resolve(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    
-    db.serialize(() => {
-      // Users table
-      db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        email TEXT UNIQUE,
-        password TEXT,
-        google_id TEXT,
-        picture TEXT
-      )`);
+const dbPath = path.resolve(__dirname, 'db.json');
 
-      // Ensure missing columns in users table are safely added if the table pre-existed
-      db.all(`PRAGMA table_info(users)`, (err, columns) => {
-        if (!err && columns) {
-          const colNames = columns.map(c => c.name);
-          if (!colNames.includes('google_id')) {
-            db.run(`ALTER TABLE users ADD COLUMN google_id TEXT`, (alterErr) => {
-              if (alterErr) console.log('Notice: google_id column addition handled:', alterErr.message);
-            });
-          }
-          if (!colNames.includes('picture')) {
-            db.run(`ALTER TABLE users ADD COLUMN picture TEXT`, (alterErr) => {
-              if (alterErr) console.log('Notice: picture column addition handled:', alterErr.message);
-            });
-          }
-        }
-      });
-
-      // Inventory table
-      db.run(`CREATE TABLE IF NOT EXISTS inventory (
-        id TEXT PRIMARY KEY,
-        user_id INTEGER,
-        name TEXT,
-        quantity TEXT,
-        category TEXT,
-        expiry TEXT,
-        image TEXT,
-        addedAt TEXT,
-        event_id TEXT,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )`);
-
-      db.all(`PRAGMA table_info(inventory)`, (err, columns) => {
-        if (!err && columns) {
-          const colNames = columns.map(c => c.name);
-          if (!colNames.includes('event_id')) {
-            db.run(`ALTER TABLE inventory ADD COLUMN event_id TEXT`, (alterErr) => {
-              if (alterErr) console.log('Notice: event_id column addition handled:', alterErr.message);
-            });
-          }
-        }
-      });
-
-      // Custom recipes table
-      db.run(`CREATE TABLE IF NOT EXISTS custom_recipes (
-        id TEXT PRIMARY KEY,
-        user_id INTEGER,
-        title TEXT,
-        prepTime TEXT,
-        ingredients TEXT,
-        instructions TEXT,
-        createdAt TEXT,
-        FOREIGN KEY (user_id) REFERENCES users (id)
-      )`);
-    });
+// Initialize db.json if not present
+const initializeDb = () => {
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(
+      dbPath,
+      JSON.stringify({ users: [], inventory: [], custom_recipes: [] }, null, 2),
+      'utf8'
+    );
   }
-});
+};
+initializeDb();
+
+// Safe thread-safe file reading and writing helper
+const readData = () => {
+  try {
+    initializeDb();
+    const raw = fs.readFileSync(dbPath, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('JSON DB Read Error:', err);
+    return { users: [], inventory: [], custom_recipes: [] };
+  }
+};
+
+const writeData = (data) => {
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('JSON DB Write Error:', err);
+  }
+};
+
+// Expose clean helper methods matching the application needs
+const db = {
+  users: {
+    findByEmail: (email) => {
+      const data = readData();
+      return data.users.find(u => u.email?.toLowerCase() === email?.toLowerCase()) || null;
+    },
+    findById: (id) => {
+      const data = readData();
+      return data.users.find(u => u.id === Number(id)) || null;
+    },
+    insert: (user) => {
+      const data = readData();
+      const newId = data.users.length > 0 ? Math.max(...data.users.map(u => u.id || 0)) + 1 : 1;
+      const newUser = {
+        id: newId,
+        name: user.name,
+        email: user.email,
+        password: user.password || null,
+        google_id: user.google_id || null,
+        picture: user.picture || null
+      };
+      data.users.push(newUser);
+      writeData(data);
+      return newUser;
+    },
+    update: (id, updates) => {
+      const data = readData();
+      const index = data.users.findIndex(u => u.id === Number(id));
+      if (index !== -1) {
+        data.users[index] = { ...data.users[index], ...updates };
+        writeData(data);
+        return data.users[index];
+      }
+      return null;
+    }
+  },
+  inventory: {
+    findByUserId: (userId) => {
+      const data = readData();
+      return data.inventory.filter(item => item.user_id === Number(userId))
+        .sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
+    },
+    insert: (userId, item) => {
+      const data = readData();
+      const newItem = {
+        id: item.id || Date.now().toString(),
+        user_id: Number(userId),
+        name: item.name,
+        quantity: item.quantity || '',
+        category: item.category || '',
+        expiry: item.expiry || '',
+        image: item.image || '',
+        addedAt: item.addedAt || new Date().toISOString(),
+        event_id: item.event_id || null
+      };
+      data.inventory.push(newItem);
+      writeData(data);
+      return newItem;
+    },
+    delete: (id, userId) => {
+      const data = readData();
+      const initialLength = data.inventory.length;
+      data.inventory = data.inventory.filter(item => !(item.id === id && item.user_id === Number(userId)));
+      writeData(data);
+      return data.inventory.length < initialLength;
+    }
+  },
+  recipes: {
+    findByUserId: (userId) => {
+      const data = readData();
+      return data.custom_recipes.filter(recipe => recipe.user_id === Number(userId))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    },
+    insert: (userId, recipe) => {
+      const data = readData();
+      const newRecipe = {
+        id: recipe.id || Date.now().toString(),
+        user_id: Number(userId),
+        title: recipe.title,
+        prepTime: recipe.prepTime || '',
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
+        createdAt: recipe.createdAt || new Date().toISOString()
+      };
+      data.custom_recipes.push(newRecipe);
+      writeData(data);
+      return newRecipe;
+    }
+  }
+};
 
 module.exports = db;

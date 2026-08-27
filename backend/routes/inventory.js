@@ -23,32 +23,46 @@ router.use(authMiddleware);
 
 // Get user's inventory
 router.get('/', (req, res) => {
-  db.all('SELECT * FROM inventory WHERE user_id = ? ORDER BY addedAt DESC', [req.user.id], (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    res.json(rows);
-  });
+  try {
+    const items = db.inventory.findByUserId(req.user.id);
+    res.json(items);
+  } catch (err) {
+    console.error('Fetch inventory error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Add item to inventory
 router.post('/', (req, res) => {
-  const { id, name, quantity, category, expiry, image, addedAt } = req.body;
+  const { id, name, quantity, category, expiry, image, addedAt, event_id } = req.body;
   
-  db.run(
-    'INSERT INTO inventory (id, user_id, name, quantity, category, expiry, image, addedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, req.user.id, name, quantity, category, expiry, image, addedAt],
-    (err) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
-      res.json({ success: true });
-    }
-  );
+  try {
+    db.inventory.insert(req.user.id, {
+      id,
+      name,
+      quantity,
+      category,
+      expiry,
+      image,
+      addedAt,
+      event_id
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Add inventory item error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Delete item
 router.delete('/:id', (req, res) => {
-  db.run('DELETE FROM inventory WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    res.json({ success: true });
-  });
+  try {
+    const success = db.inventory.delete(req.params.id, req.user.id);
+    res.json({ success });
+  } catch (err) {
+    console.error('Delete inventory item error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 module.exports = router;

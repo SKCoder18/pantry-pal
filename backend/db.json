@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "JSON User",
+      "email": "jsonuser@example.com",
+      "password": "$2b$10$Ffg5OIXW7hrAp6KT0RDenOrcrY17Ao7E0yxN3Ki9v0mqHWHhWp1cu",
+      "google_id": null,
+      "picture": null
+    }
+  ],
+  "inventory": [],
+  "custom_recipes": []
+}
