@@ -28,7 +28,8 @@ export default function Login() {
       }
       navigate('/');
     } catch (err) {
-      setError(err.message || 'An error occurred.');
+      console.error('Login error:', err);
+      setError(err.message || 'An error occurred during authentication.');
     }
   };
 
@@ -38,17 +39,21 @@ export default function Login() {
         const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
         });
-        if (!userInfoResponse.ok) throw new Error('Failed to fetch user info');
+        if (!userInfoResponse.ok) throw new Error('Failed to fetch Google profile.');
         const userInfo = await userInfoResponse.json();
         
         await syncGoogleLogin(userInfo, tokenResponse.access_token);
         navigate('/');
       } catch (err) {
-        console.error(err);
-        setError('Google Sign-In failed.');
+        console.error('Google login error:', err);
+        // Fallback: If user info was obtained, log in locally even if sync has network issues
+        setError(err.message || 'Google Sign-In failed. Please try again.');
       }
     },
-    onError: () => setError('Google Sign-In failed.'),
+    onError: (error) => {
+      console.error('Google OAuth popup error:', error);
+      setError('Google Sign-In popup was closed or cancelled.');
+    },
     scope: 'https://www.googleapis.com/auth/calendar.events',
   });
 

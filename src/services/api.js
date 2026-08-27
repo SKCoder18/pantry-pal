@@ -1,4 +1,4 @@
-const API_URL = 'https://pantry-pal-utm8.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://pantry-pal-utm8.onrender.com/api';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('pantrypal_token');
@@ -8,46 +8,73 @@ const getAuthHeaders = () => {
   };
 };
 
+// Helper for safe fetch JSON response handling
+const handleJsonResponse = async (res, defaultErrorMessage) => {
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
+  }
+  if (!res.ok) {
+    const errorMsg = data?.message || data?.error || defaultErrorMessage;
+    throw new Error(errorMsg);
+  }
+  return data;
+};
+
 // --- AUTH ---
 export const registerUser = async (name, email, password) => {
-  const res = await fetch(`${API_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password })
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || 'Registration failed');
+  try {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    return await handleJsonResponse(res, 'Registration failed');
+  } catch (err) {
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('NETWORK_ERROR');
+    }
+    throw err;
   }
-  return res.json();
 };
 
 export const loginUser = async (email, password) => {
-  const res = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || 'Login failed');
+  try {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    return await handleJsonResponse(res, 'Login failed');
+  } catch (err) {
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('NETWORK_ERROR');
+    }
+    throw err;
   }
-  return res.json();
 };
 
 export const googleLoginSync = async (userInfo) => {
-  const res = await fetch(`${API_URL}/auth/google`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: userInfo.name,
-      email: userInfo.email,
-      picture: userInfo.picture,
-      google_id: userInfo.sub
-    })
-  });
-  if (!res.ok) throw new Error('Google sync failed');
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: userInfo.name,
+        email: userInfo.email,
+        picture: userInfo.picture,
+        google_id: userInfo.sub
+      })
+    });
+    return await handleJsonResponse(res, 'Google sync failed');
+  } catch (err) {
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('NETWORK_ERROR');
+    }
+    throw err;
+  }
 };
 
 // --- INVENTORY ---

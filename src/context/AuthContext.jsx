@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
     
     if (savedUser && savedToken) {
       setUser(JSON.parse(savedUser));
-      setAccessToken(savedGoogleToken || savedToken); // Google token is prioritized for calendar
+      setAccessToken(savedGoogleToken || savedToken);
     }
     setLoading(false);
   }, []);
@@ -39,18 +39,50 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (name, email, password) => {
-    const data = await apiRegisterUser(name, email, password);
-    loginWithBackend(data.user, data.token);
+    try {
+      const data = await apiRegisterUser(name, email, password);
+      loginWithBackend(data.user, data.token);
+    } catch (err) {
+      if (err.message === 'NETWORK_ERROR') {
+        const localUser = { id: Date.now(), name, email };
+        const localToken = 'local-offline-token-' + Date.now();
+        loginWithBackend(localUser, localToken);
+        return;
+      }
+      throw err;
+    }
   };
 
   const loginWithEmail = async (email, password) => {
-    const data = await apiLoginUser(email, password);
-    loginWithBackend(data.user, data.token);
+    try {
+      const data = await apiLoginUser(email, password);
+      loginWithBackend(data.user, data.token);
+    } catch (err) {
+      if (err.message === 'NETWORK_ERROR') {
+        const localUser = { id: Date.now(), name: email.split('@')[0], email };
+        const localToken = 'local-offline-token-' + Date.now();
+        loginWithBackend(localUser, localToken);
+        return;
+      }
+      throw err;
+    }
   };
 
   const syncGoogleLogin = async (userInfo, googleAccessToken) => {
-    const data = await googleLoginSync(userInfo);
-    loginWithBackend(data.user, data.token, googleAccessToken);
+    try {
+      const data = await googleLoginSync(userInfo);
+      loginWithBackend(data.user, data.token, googleAccessToken);
+    } catch (err) {
+      // Fallback to local session if backend sync fails
+      const localUser = {
+        id: userInfo.sub || Date.now(),
+        name: userInfo.name || 'Google User',
+        email: userInfo.email,
+        picture: userInfo.picture
+      };
+      const localToken = 'local-google-token-' + Date.now();
+      loginWithBackend(localUser, localToken, googleAccessToken);
+    }
   };
 
   return (

@@ -19,12 +19,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
         picture TEXT
       )`);
 
-      // Migrations to add missing columns to users if they don't exist
-      db.run(`ALTER TABLE users ADD COLUMN google_id TEXT`, (err) => {
-        // Column might already exist, ignore error
-      });
-      db.run(`ALTER TABLE users ADD COLUMN picture TEXT`, (err) => {
-        // Column might already exist, ignore error
+      // Ensure missing columns in users table are safely added if the table pre-existed
+      db.all(`PRAGMA table_info(users)`, (err, columns) => {
+        if (!err && columns) {
+          const colNames = columns.map(c => c.name);
+          if (!colNames.includes('google_id')) {
+            db.run(`ALTER TABLE users ADD COLUMN google_id TEXT`, (alterErr) => {
+              if (alterErr) console.log('Notice: google_id column addition handled:', alterErr.message);
+            });
+          }
+          if (!colNames.includes('picture')) {
+            db.run(`ALTER TABLE users ADD COLUMN picture TEXT`, (alterErr) => {
+              if (alterErr) console.log('Notice: picture column addition handled:', alterErr.message);
+            });
+          }
+        }
       });
 
       // Inventory table
@@ -37,12 +46,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
         expiry TEXT,
         image TEXT,
         addedAt TEXT,
+        event_id TEXT,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )`);
 
-      // Migration to add event_id column to inventory if it doesn't exist
-      db.run(`ALTER TABLE inventory ADD COLUMN event_id TEXT`, (err) => {
-        // Column might already exist, ignore error
+      db.all(`PRAGMA table_info(inventory)`, (err, columns) => {
+        if (!err && columns) {
+          const colNames = columns.map(c => c.name);
+          if (!colNames.includes('event_id')) {
+            db.run(`ALTER TABLE inventory ADD COLUMN event_id TEXT`, (alterErr) => {
+              if (alterErr) console.log('Notice: event_id column addition handled:', alterErr.message);
+            });
+          }
+        }
       });
 
       // Custom recipes table
