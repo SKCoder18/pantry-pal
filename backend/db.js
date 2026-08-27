@@ -101,6 +101,16 @@ const db = {
       data.inventory = data.inventory.filter(item => !(item.id === id && item.user_id === Number(userId)));
       writeData(data);
       return data.inventory.length < initialLength;
+    },
+    update: (id, userId, updates) => {
+      const data = readData();
+      const index = data.inventory.findIndex(item => item.id === id && item.user_id === Number(userId));
+      if (index !== -1) {
+        data.inventory[index] = { ...data.inventory[index], ...updates };
+        writeData(data);
+        return data.inventory[index];
+      }
+      return null;
     }
   },
   recipes: {

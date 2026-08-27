@@ -148,3 +148,13 @@ export const saveCustomRecipe = async (recipe) => {
   if (!res.ok) throw new Error('Failed to add recipe');
   return newRecipe;
 };
+
+// --- CHAT ---
+export const sendChatMessage = async (messages, userMsg) => {
+  const res = await fetch(`${API_URL}/chat`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ messages, userMsg })
+  });
+  return await handleJsonResponse(res, 'Failed to send chat message.');
+};

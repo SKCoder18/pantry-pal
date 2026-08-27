@@ -1,6 +1,6 @@
-// Mock AI Service - Works 100% offline without any API keys!
+// AI Service with fallback offline mode
 import { RECIPE_DB } from '../utils/recipeDB';
-import { getCustomRecipes } from './api';
+import { getCustomRecipes, sendChatMessage } from './api';
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const suggestRecipesFromIngredients = async (itemsList) => {
@@ -126,67 +126,79 @@ export const getRecipeDetails = async (recipeName, itemsList) => {
 };
 
 export const chatWithPantryAI = async (messages, userMsg, itemsList) => {
-  await wait(1000); // Simulate AI typing latency
-
-  const lowerMsg = userMsg.toLowerCase();
-  
-  // 1. Inventory Counting Logic
-  if (lowerMsg.includes("how many") || lowerMsg.includes("count") || lowerMsg.includes("total")) {
-      if (itemsList.length === 0) return { text: "Your pantry is currently empty! You don't have any items." };
-      
-      const count = itemsList.length;
-      let categories = {};
-      itemsList.forEach(i => {
-         const cat = i.category || 'Other';
-         categories[cat] = (categories[cat] || 0) + 1;
-      });
-      
-      let breakdown = Object.entries(categories).map(([c, num]) => `${num} in ${c}`).join(", ");
+  try {
+    // Try to call the server-side Gemini API
+    const response = await sendChatMessage(messages, userMsg);
+    return response;
+  } catch (error) {
+    console.warn('Backend chat API failed, falling back to local mock mode:', error.message);
+    
+    // Check if it was a network error or missing key error
+    if (error.message === 'NETWORK_ERROR' || error.message.includes('configured')) {
+      // Return a clean fallback message instead of crashing
       return { 
-         text: `You have a total of ${count} items in your inventory right now. \n\nBreakdown: ${breakdown}.` 
+        text: "I'm operating in offline Local Mode right now. I can check your local inventory if you ask 'what do I have' or count them for you!" 
       };
-  }
+    }
 
-  // 2. Inventory Listing Logic
-  if (lowerMsg.includes("what do i have") || lowerMsg.includes("ingredients") || lowerMsg.includes("pantry") || lowerMsg.includes("list")) {
-      if (itemsList.length === 0) return { text: "It looks like your pantry is completely empty right now! Try scanning some items in." };
-      const items = itemsList.map(i => i.name).join(", ");
-      return { text: `You currently have: ${items}. Would you like me to suggest a recipe with these?` };
-  }
-  
-  // 3. Exact Recipe Search Logic
-  if (lowerMsg.includes("how to make") || lowerMsg.includes("recipe") || lowerMsg.includes("cook")) {
-     // Extract potential recipe name by removing conversational words
-     let searchTerms = lowerMsg.replace("how to make", "").replace("recipe for", "").replace("can you cook", "").trim();
-     
-     if (searchTerms.length > 2) {
-         // Search RECIPE_DB and Custom Recipes
-         const customRecipes = await getCustomRecipes();
-         const allRecipes = [...customRecipes, ...RECIPE_DB];
-         
-         const match = allRecipes.find(r => r.title.toLowerCase().includes(searchTerms) || searchTerms.includes(r.title.toLowerCase()));
-         
-         if (match) {
-             return {
-                 text: `I found the perfect recipe for ${match.title}! It takes about ${match.time} to make. Want to see the full steps and check if you have the ingredients?`,
-                 actionLink: `/recipes/${encodeURIComponent(match.title)}`,
-                 actionText: `View ${match.title}`
-             };
-         }
-     }
+    // Local fallback mock logic
+    await wait(1000); // Simulate typing latency
+    const lowerMsg = userMsg.toLowerCase();
+    
+    if (lowerMsg.includes("how many") || lowerMsg.includes("count") || lowerMsg.includes("total")) {
+        if (!itemsList || itemsList.length === 0) return { text: "Your pantry is currently empty! You don't have any items." };
+        
+        const count = itemsList.length;
+        let categories = {};
+        itemsList.forEach(i => {
+           const cat = i.category || 'Other';
+           categories[cat] = (categories[cat] || 0) + 1;
+        });
+        
+        let breakdown = Object.entries(categories).map(([c, num]) => `${num} in ${c}`).join(", ");
+        return { 
+           text: `You have a total of ${count} items in your inventory right now. \n\nBreakdown: ${breakdown}.` 
+        };
+    }
 
-     if (itemsList.length === 0) return { text: "You need some ingredients first before we can cook!" };
-     const ing = itemsList[0]?.name || "ingredients";
-     return { 
-         text: `I couldn't find a specific recipe for that in your custom or built-in databases. But why don't you try making a warm ${ing} stew? Check out the Recipes tab to generate AI suggestions!`,
-         actionLink: '/recipes',
-         actionText: 'Go to Recipes'
-     };
-  }
+    if (lowerMsg.includes("what do i have") || lowerMsg.includes("ingredients") || lowerMsg.includes("pantry") || lowerMsg.includes("list")) {
+        if (!itemsList || itemsList.length === 0) return { text: "It looks like your pantry is completely empty right now! Try scanning some items in." };
+        const items = itemsList.map(i => i.name).join(", ");
+        return { text: `You currently have: ${items}. Would you like me to suggest a recipe with these?` };
+    }
+    
+    if (lowerMsg.includes("how to make") || lowerMsg.includes("recipe") || lowerMsg.includes("cook")) {
+       let searchTerms = lowerMsg.replace("how to make", "").replace("recipe for", "").replace("can you cook", "").trim();
+       
+       if (searchTerms.length > 2) {
+           const customRecipes = await getCustomRecipes();
+           const allRecipes = [...customRecipes, ...RECIPE_DB];
+           const match = allRecipes.find(r => r.title.toLowerCase().includes(searchTerms) || searchTerms.includes(r.title.toLowerCase()));
+           
+           if (match) {
+               return {
+                   text: `I found the perfect recipe for ${match.title}! It takes about ${match.time} to make. Want to see the full steps and check if you have the ingredients?`,
+                   actionLink: `/recipes/${encodeURIComponent(match.title)}`,
+                   actionText: `View ${match.title}`
+               };
+           }
+       }
 
-  if (lowerMsg.includes("hello") || lowerMsg.includes("hi")) {
-      return { text: "Hello there! I'm your local AI Assistant. Tell me what you'd like to cook, or ask me to check your inventory!" };
-  }
+       if (!itemsList || itemsList.length === 0) return { text: "You need some ingredients first before we can cook!" };
+       const ing = itemsList[0]?.name || "ingredients";
+       return { 
+           text: `I couldn't find a specific recipe for that in your custom or built-in databases. But why don't you try making a warm ${ing} stew? Check out the Recipes tab to generate AI suggestions!`,
+           actionLink: '/recipes',
+           actionText: 'Go to Recipes'
+       };
+    }
 
-  return { text: "That sounds interesting! I am operating in Local Mode right now. You can ask me to count your inventory, list your ingredients, or ask 'how to make [recipe name]'." };
+    if (lowerMsg.includes("hello") || lowerMsg.includes("hi")) {
+        return { text: "Hello there! I'm your local AI Assistant. Tell me what you'd like to cook, or ask me to check your inventory!" };
+    }
+
+    return { 
+      text: "I am operating in offline Local Mode right now. You can ask me to count your inventory, list your ingredients, or ask 'how to make [recipe name]'." 
+    };
+  }
 };
